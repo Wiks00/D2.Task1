@@ -22,7 +22,7 @@ namespace BackEnd
             serverObject.AddConnection(this);
         }
 
-        public async Task BeginProcess()
+        public void BeginProcess()
         {
             try
             {
@@ -33,7 +33,7 @@ namespace BackEnd
 
                 message = $"{userName} entered chat";
 
-                await server.BroadcastMessage(message, Id);
+                server.BroadcastMessage(message, Id);
                 Console.WriteLine(message);
 
                 while (true)
@@ -43,13 +43,13 @@ namespace BackEnd
                         message = GetMessage();
                         message = $"{userName}: {message}";
                         Console.WriteLine(message);
-                        await server.BroadcastMessage(message, Id);
+                        server.BroadcastMessage(message, Id);
                     }
                     catch
                     {
                         message = $"{userName}: left the chat";
                         Console.WriteLine(message);
-                        await server.BroadcastMessage(message, Id);
+                        server.BroadcastMessage(message, Id);
                         break;
                     }
                 }
