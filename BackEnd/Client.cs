@@ -28,7 +28,7 @@ namespace BackEnd
             {
                 Stream = client.GetStream();
 
-                string message = await GetMessage();
+                string message = GetMessage();
                 string userName = message;
 
                 message = $"{userName} entered chat";
@@ -40,7 +40,7 @@ namespace BackEnd
                 {
                     try
                     {
-                        message = await GetMessage();
+                        message = GetMessage();
                         message = $"{userName}: {message}";
                         Console.WriteLine(message);
                         await server.BroadcastMessage(message, Id);
@@ -65,17 +65,17 @@ namespace BackEnd
             }
         }
 
-        private async Task<string> GetMessage()
+        private string GetMessage()
         {
             byte[] data = new byte[64];
             StringBuilder builder = new StringBuilder();
             int bytes;
 
-            while (Stream.DataAvailable)
+            do
             {
-                bytes = await Stream.ReadAsync(data, 0, data.Length);
+                bytes = Stream.Read(data, 0, data.Length);
                 builder.Append(Encoding.UTF8.GetString(data, 0, bytes));
-            }
+            } while (Stream.DataAvailable);
 
             return builder.ToString();
         }

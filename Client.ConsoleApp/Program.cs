@@ -56,11 +56,11 @@ namespace Client.ConsoleApp
                 string message = SentenceGenerator.Generator.GenerateMessage();
                 Console.WriteLine(message);
 
-                Task.Delay(TimeSpan.FromSeconds(rdm.Next(3, 60)));
-
                 byte[] data = Encoding.UTF8.GetBytes(message);
                 stream.Write(data, 0, data.Length);
                 messageCount--;
+
+                Task.Delay(TimeSpan.FromSeconds(rdm.Next(3, 10))).Wait();
             }
         }
 
