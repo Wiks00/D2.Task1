@@ -1,0 +1,111 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Globalization;
+using System.IO;
+using System.IO.Pipes;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace BackEnd
+{
+    public sealed class Server
+    {
+        private static readonly Lazy<Server> lazy =
+            new Lazy<Server>(() => new Server());
+
+        private readonly TcpListener tcpListener;
+        private readonly List<Client> clients;
+        private readonly List<string> messages;
+
+        public static Server Instance => lazy.Value;
+
+        private Server()
+        {
+            tcpListener = new TcpListener(IPAddress.Any, 8888);
+            clients = new List<Client>();
+            messages = new List<string>(20);
+        }
+
+        public void AddConnection(Client clientObject)
+        {
+            clients.Add(clientObject);
+        }
+
+        public void RemoveConnection(string id)
+        {
+            Client client = clients.FirstOrDefault(c => c.Id == id);
+            clients?.Remove(client);
+        }
+
+        public void BeginListen()
+        {
+            try
+            {
+                tcpListener.Start();
+                Console.WriteLine("Server was started. Waiting for connections...");
+
+                while (true)
+                {
+                    TcpClient tcpClient = tcpListener.AcceptTcpClient();
+
+                    Client clientObject = new Client(tcpClient, this);
+                    clientObject.BeginProcess();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                EndListen();
+            }
+        }
+
+        public async Task BroadcastMessage(string message, string id)
+        {
+            if (messages.Count >= 20)
+            {
+                for (int i = 1; i < messages.Count; i++)
+                {
+                    if (i == messages.Count - 1)
+                    {
+                        messages[i] = message;
+                    }
+                    else
+                    {
+                        messages[i - 1] = messages[i];
+                    }
+                }
+            }
+            else
+            {
+                messages.Add(message);
+            }
+
+            byte[] data = Encoding.UTF8.GetBytes(message);
+
+            foreach (Client client in clients)
+            {
+                if (!client.Id.Equals(id, StringComparison.InvariantCulture))
+                {
+                    await client.Stream.WriteAsync(data, 0, data.Length);
+                }
+            }
+        }
+
+        public void EndListen()
+        {
+            tcpListener.Stop();
+
+            foreach (Client client in clients)
+            {
+                client.EndProcess();
+            }
+
+            Environment.Exit(0);
+        }
+    }
+}
