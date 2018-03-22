@@ -25,7 +25,7 @@ namespace BackEnd
             serverObject.AddConnection(this);
         }
 
-        public void BeginProcess()
+        public async Task BeginProcess()
         {
             try
             {
@@ -34,9 +34,10 @@ namespace BackEnd
                 string message = GetMessage();
                 Name = message;
 
-                message = $"{Name} entered chat";
+                message = $"'{Name}' entered chat";
 
-                server.BroadcastMessage(message, Id);
+                await server.SendHistory(Id);
+                await server.BroadcastMessage(message, Id);
                 Console.WriteLine(message);
 
                 while (true)
@@ -46,13 +47,13 @@ namespace BackEnd
                         message = GetMessage();
                         message = $"{Name}: {message}";
                         Console.WriteLine(message);
-                        server.BroadcastMessage(message, Id);
+                        await server.BroadcastMessage(message, Id);
                     }
                     catch
                     {
                         message = $"{Name}: left the chat";
                         Console.WriteLine(message);
-                        server.BroadcastMessage(message, Id);
+                        await server.BroadcastMessage(message, Id);
                         break;
                     }
                 }
@@ -73,6 +74,11 @@ namespace BackEnd
             byte[] data = new byte[64];
             StringBuilder builder = new StringBuilder();
             int bytes;
+
+            do
+            {
+                Task.Delay(TimeSpan.FromMilliseconds(100)).Wait();
+            } while (client.Available == 0);
 
             do
             {

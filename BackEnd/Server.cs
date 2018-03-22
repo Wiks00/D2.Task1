@@ -59,8 +59,7 @@ namespace BackEnd
                     TcpClient tcpClient = tcpListener.AcceptTcpClient();
 
                     Client clientObject = new Client(tcpClient, this);
-                    Thread listenThread = new Thread(clientObject.BeginProcess);
-                    listenThread.Start();
+                    Task.Run(clientObject.BeginProcess);
                 }
             }
             catch (Exception ex)
@@ -70,7 +69,18 @@ namespace BackEnd
             }
         }
 
-        public void BroadcastMessage(string message, string id)
+        public async Task SendHistory(string id)
+        {
+            Client client = clients.First(item => item.Id.Equals(id, StringComparison.InvariantCulture));
+
+            foreach (var message in History)
+            {
+                byte[] data = Encoding.UTF8.GetBytes(message);
+                await client.Stream.WriteAsync(data, 0, data.Length);
+            }
+        }
+
+        public async Task BroadcastMessage(string message, string id)
         {
             if (messages.Count >= 20)
             {
@@ -97,7 +107,7 @@ namespace BackEnd
             {
                 if (!client.Id.Equals(id, StringComparison.InvariantCulture))
                 {
-                    client.Stream.Write(data, 0, data.Length);
+                    await client.Stream.WriteAsync(data, 0, data.Length);
                 }
             }
         }

@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using BackEnd.Utils;
 
 namespace Client.ConsoleApp
 {
@@ -16,26 +17,33 @@ namespace Client.ConsoleApp
         private const int port = 8888;
         static TcpClient client;
         static NetworkStream stream;
+        static CancellationTokenSource cts;
 
         static void Main(string[] args)
         {
-            Console.Write("Enter client name: ");
-            string userName = Console.ReadLine()?.Trim();
-            client = new TcpClient();
             try
             {
-                client.Connect(host, port);
-                stream = client.GetStream();
+                while (true)
+                {
+                    cts = new CancellationTokenSource();
+                    var ct = cts.Token;
 
-                string message = string.IsNullOrEmpty(userName) ? "Anonym" : userName;
-                byte[] data = Encoding.UTF8.GetBytes(message);
-                stream.Write(data, 0, data.Length);
+                    string userName = Generator.GenerateMessage();
+                    client = new TcpClient();
 
-                ReceiveMessage();
+             
+                    client.Connect(host, port);
+                    stream = client.GetStream();
 
-                Console.WriteLine($"Welcome, {userName}!");
+                    byte[] data = Encoding.UTF8.GetBytes(userName);
+                    stream.Write(data, 0, data.Length);
 
-                SendMessage();
+                    Task.Run(ReceiveMessage, ct);
+
+                    Console.WriteLine($"Welcome, {userName}!");
+
+                    SendMessage();
+                }
             }
             catch (Exception ex)
             {
@@ -56,22 +64,17 @@ namespace Client.ConsoleApp
 
             while (messageCount >= 0)
             {
-                string message = SentenceGenerator.Generator.GenerateMessage();
+                var delay = TimeSpan.FromSeconds(rdm.Next(3, 10));
+
+                Console.WriteLine($"freeze for {delay.Seconds} seconds");
+                Task.Delay(delay).Wait();
+
+                string message = Generator.GenerateMessage();
                 Console.WriteLine(message);
 
                 byte[] data = Encoding.UTF8.GetBytes(message);
                 stream.Write(data, 0, data.Length);
                 messageCount--;
-
-                var delay = TimeSpan.FromSeconds(rdm.Next(3, 10));
-
-                Console.WriteLine($"freeze for {delay.Seconds} seconds");
-                Task.Delay(delay).Wait();
-            }
-
-            while (true)
-            {
-                Console.ReadKey();
             }
         }
 
@@ -105,10 +108,11 @@ namespace Client.ConsoleApp
 
         static void Disconnect()
         {
+            cts.Cancel();
+            //client.Client.Shutdown(SocketShutdown.Both);
+            //client.Client.Close();
             stream?.Close();
             client?.Close();
-            Console.ReadKey();
-            Environment.Exit(0);
         }
     }
 }
