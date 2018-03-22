@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,6 +52,8 @@ namespace Client.ConsoleApp
             var rdm = new Random(DateTimeOffset.UtcNow.Millisecond);
             int messageCount = rdm.Next(1, 10);
 
+            Console.WriteLine($"Sending {messageCount} messages");
+
             while (messageCount >= 0)
             {
                 string message = SentenceGenerator.Generator.GenerateMessage();
@@ -60,7 +63,15 @@ namespace Client.ConsoleApp
                 stream.Write(data, 0, data.Length);
                 messageCount--;
 
-                Task.Delay(TimeSpan.FromSeconds(rdm.Next(3, 10))).Wait();
+                var delay = TimeSpan.FromSeconds(rdm.Next(3, 10));
+
+                Console.WriteLine($"freeze for {delay.Seconds} seconds");
+                Task.Delay(delay).Wait();
+            }
+
+            while (true)
+            {
+                Console.ReadKey();
             }
         }
 

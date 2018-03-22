@@ -10,7 +10,10 @@ namespace BackEnd
     public class Client
     {
         protected internal string Id { get; }
-        protected internal NetworkStream Stream { get; private set; }
+        protected internal NetworkStream Stream { get; set; }
+
+        public string Name { get; private set; }
+
         TcpClient client;
         Server server; 
 
@@ -29,9 +32,9 @@ namespace BackEnd
                 Stream = client.GetStream();
 
                 string message = GetMessage();
-                string userName = message;
+                Name = message;
 
-                message = $"{userName} entered chat";
+                message = $"{Name} entered chat";
 
                 server.BroadcastMessage(message, Id);
                 Console.WriteLine(message);
@@ -41,13 +44,13 @@ namespace BackEnd
                     try
                     {
                         message = GetMessage();
-                        message = $"{userName}: {message}";
+                        message = $"{Name}: {message}";
                         Console.WriteLine(message);
                         server.BroadcastMessage(message, Id);
                     }
                     catch
                     {
-                        message = $"{userName}: left the chat";
+                        message = $"{Name}: left the chat";
                         Console.WriteLine(message);
                         server.BroadcastMessage(message, Id);
                         break;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Configuration;
 using System.Globalization;
 using System.IO;
@@ -22,6 +23,8 @@ namespace BackEnd
         private readonly List<Client> clients;
         private readonly List<string> messages;
 
+        public ReadOnlyCollection<string> History { get; }
+
         public static Server Instance => lazy.Value;
 
         private Server()
@@ -29,6 +32,8 @@ namespace BackEnd
             tcpListener = new TcpListener(IPAddress.Any, 8888);
             clients = new List<Client>();
             messages = new List<string>(20);
+
+            History = new ReadOnlyCollection<string>(messages);
         }
 
         public void AddConnection(Client clientObject)
