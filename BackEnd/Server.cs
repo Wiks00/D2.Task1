@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Configuration;
@@ -73,11 +73,17 @@ namespace BackEnd
         {
             Client client = clients.First(item => item.Id.Equals(id, StringComparison.InvariantCulture));
 
+            byte[] header_footer = Encoding.UTF8.GetBytes("--- History ---" + Environment.NewLine);
+
+            await client.Stream.WriteAsync(header_footer, 0, header_footer.Length);
+
             foreach (var message in History)
             {
-                byte[] data = Encoding.UTF8.GetBytes(message);
+                byte[] data = Encoding.UTF8.GetBytes(message + Environment.NewLine);
                 await client.Stream.WriteAsync(data, 0, data.Length);
             }
+
+            await client.Stream.WriteAsync(header_footer, 0, header_footer.Length);
         }
 
         public async Task BroadcastMessage(string message, string id)
@@ -105,7 +111,7 @@ namespace BackEnd
 
             foreach (Client client in clients)
             {
-                if (!client.Id.Equals(id, StringComparison.InvariantCulture))
+                if (!client.Id.Equals(id, StringComparison.InvariantCulture) && client.Stream.DataAvailable)
                 {
                     await client.Stream.WriteAsync(data, 0, data.Length);
                 }
