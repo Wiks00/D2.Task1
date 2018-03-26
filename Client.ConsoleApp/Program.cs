@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -21,9 +21,9 @@ namespace Client.ConsoleApp
 
         static void Main(string[] args)
         {
-            try
+            while (true)
             {
-                while (true)
+                try
                 {
                     cts = new CancellationTokenSource();
                     var ct = cts.Token;
@@ -43,15 +43,16 @@ namespace Client.ConsoleApp
                     Console.WriteLine($"Welcome, {userName}!");
 
                     SendMessage();
+                
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-            finally
-            {
-                Disconnect();
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+                finally
+                {
+                    Disconnect();
+                }
             }
         }
 
@@ -80,7 +81,7 @@ namespace Client.ConsoleApp
 
         static async Task ReceiveMessage()
         {
-            while (true)
+            while (true) 
             {
                 try
                 {
@@ -109,8 +110,8 @@ namespace Client.ConsoleApp
         static void Disconnect()
         {
             cts.Cancel();
-            //client.Client.Shutdown(SocketShutdown.Both);
-            //client.Client.Close();
+            client.Client.Shutdown(SocketShutdown.Both);
+
             stream?.Close();
             client?.Close();
         }
