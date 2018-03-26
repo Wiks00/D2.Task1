@@ -1,115 +1,133 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Configuration;
+using System.Globalization;
+using System.IO;
+using System.IO.Pipes;
 using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BackEnd
 {
-    public class Client
+    public sealed class Server
     {
-        protected internal string Id { get; }
-        protected internal NetworkStream Stream { get; set; }
+        private static readonly Lazy<Server> lazy =
+            new Lazy<Server>(() => new Server());
 
-        public string Name { get; private set; }
+        private readonly TcpListener tcpListener;
+        private readonly List<Client> clients;
+        private readonly List<string> messages;
 
-        TcpClient client;
-        Server server; 
+        public ReadOnlyCollection<string> History { get; }
 
-        public Client(TcpClient tcpClient, Server serverObject)
+        public static Server Instance => lazy.Value;
+
+        private Server()
         {
-            Id = Guid.NewGuid().ToString();
-            client = tcpClient;
-            server = serverObject;
-            serverObject.AddConnection(this);
+            tcpListener = new TcpListener(IPAddress.Any, 8888);
+            clients = new List<Client>();
+            messages = new List<string>(20);
+
+            History = new ReadOnlyCollection<string>(messages);
         }
 
-        public async Task BeginProcess()
+        public void AddConnection(Client clientObject)
+        {
+            clients.Add(clientObject);
+        }
+
+        public void RemoveConnection(string id)
+        {
+            Client client = clients.FirstOrDefault(c => c.Id == id);
+            clients?.Remove(client);
+        }
+
+        public void BeginListen()
         {
             try
             {
-                Stream = client.GetStream();
-
-                string message = GetMessage();
-                Name = message;
-
-                message = $"'{Name}' entered chat ";
-
-                await server.SendHistory(Id);
-                await server.BroadcastMessage(message, Id);
-                Console.WriteLine(message);
+                tcpListener.Start();
+                Console.WriteLine("Server was started. Waiting for connections...");
 
                 while (true)
                 {
-                    message = GetMessage();
+                    TcpClient tcpClient = tcpListener.AcceptTcpClient();
 
-                    if (CheckIfClientConnected())
+                    Client clientObject = new Client(tcpClient, this);
+                    Task.Run(clientObject.BeginProcess);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                EndListen();
+            }
+        }
+
+        public async Task SendHistory(string id)
+        {
+            Client client = clients.First(item => item.Id.Equals(id, StringComparison.InvariantCulture));
+
+            byte[] header_footer = Encoding.UTF8.GetBytes("--- History ---" + Environment.NewLine);
+
+            await client.Stream.WriteAsync(header_footer, 0, header_footer.Length);
+
+            foreach (var message in History)
+            {
+                byte[] data = Encoding.UTF8.GetBytes(message + Environment.NewLine);
+                await client.Stream.WriteAsync(data, 0, data.Length);
+            }
+
+            await client.Stream.WriteAsync(header_footer, 0, header_footer.Length);
+        }
+
+        public async Task BroadcastMessage(string message, string id)
+        {
+            if (messages.Count >= 20)
+            {
+                for (int i = 1; i <= messages.Count; i++)
+                {
+                    if (i == messages.Count)
                     {
-                        message = $"{Name}: {message}";
-                        Console.WriteLine(message);
-
-                        await server.BroadcastMessage(message, Id);
+                        messages[i - 1] = message;
                     }
                     else
                     {
-                        message = $"{Name}: left the chat";
-                        Console.WriteLine(message);
-
-                        await server.BroadcastMessage(message, Id);
-
-                        break;
+                        messages[i - 1] = messages[i];
                     }
                 }
             }
-            catch (Exception e)
+            else
             {
-                Console.WriteLine(e.Message);
+                messages.Add(message);
             }
-            finally
-            {
-                server.RemoveConnection(Id);
-                EndProcess();
-            }
-        }
 
-        private bool CheckIfClientConnected()
-        {
-            if (client.Client.Poll(0, SelectMode.SelectRead))
+            byte[] data = Encoding.UTF8.GetBytes(message);
+
+            foreach (Client client in clients)
             {
-                byte[] buff = new byte[1];
-                if (client.Client.Receive(buff, SocketFlags.Peek) == 0)
+                if (!client.Id.Equals(id, StringComparison.InvariantCulture) && client.Stream.DataAvailable)
                 {
-                    return false;
+                    await client.Stream.WriteAsync(data, 0, data.Length);
                 }
             }
-            return true;
         }
 
-        private string GetMessage()
+        public void EndListen()
         {
-            byte[] data = new byte[64];
-            StringBuilder builder = new StringBuilder();
-            int bytes;
+            tcpListener.Stop();
 
-            do
+            foreach (Client client in clients)
             {
-                Task.Delay(TimeSpan.FromMilliseconds(100)).Wait();
-            } while (client.Available == 0);
+                client.EndProcess();
+            }
 
-            do
-            {
-                bytes = Stream.Read(data, 0, data.Length);
-                builder.Append(Encoding.UTF8.GetString(data, 0, bytes));
-            } while (Stream.DataAvailable);
-
-            return builder.ToString();
-        }
-
-        protected internal void EndProcess()
-        {
-            Stream?.Close();
-            client?.Close();
+            Environment.Exit(0);
         }
     }
 }
