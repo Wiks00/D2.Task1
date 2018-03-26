@@ -40,7 +40,7 @@ namespace BackEnd
                 await server.BroadcastMessage(message, Id);
                 Console.WriteLine(message);
 
-                while (true)
+                while (client.Available == 0)
                 {
                     try
                     {
@@ -54,23 +54,18 @@ namespace BackEnd
                         }
                         else
                         {
-                            message = $"{Name}: left the chat";
-
-                            await ProcessMessage(message);
-
                             break;
                         }
                     }
                     catch
                     {
-                        message = $"{Name}: left the chat";
-
-                        await ProcessMessage(message);
-
                         break;
                     }
-
                 }
+
+                message = $"{Name}: left the chat";
+
+                await ProcessMessage(message);
             }
             catch (Exception e)
             {
@@ -108,6 +103,11 @@ namespace BackEnd
             byte[] data = new byte[64];
             StringBuilder builder = new StringBuilder();
             int bytes;
+
+            //do
+            //{
+            //    Task.Delay(TimeSpan.FromMilliseconds(10)).Wait();
+            //} while (client.Available == 0);
 
             do
             {
