@@ -42,18 +42,22 @@ namespace BackEnd
 
                 while (true)
                 {
-                   try
+                    message = GetMessage();
+
+                    if (CheckIfClientConnected())
                     {
-                        message = GetMessage();
                         message = $"{Name}: {message}";
                         Console.WriteLine(message);
+
                         await server.BroadcastMessage(message, Id);
                     }
-                    catch
+                    else
                     {
                         message = $"{Name}: left the chat";
                         Console.WriteLine(message);
+
                         await server.BroadcastMessage(message, Id);
+
                         break;
                     }
                 }
@@ -67,6 +71,19 @@ namespace BackEnd
                 server.RemoveConnection(Id);
                 EndProcess();
             }
+        }
+
+        private bool CheckIfClientConnected()
+        {
+            if (client.Client.Poll(0, SelectMode.SelectRead))
+            {
+                byte[] buff = new byte[1];
+                if (client.Client.Receive(buff, SocketFlags.Peek) == 0)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private string GetMessage()
