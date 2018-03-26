@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -34,7 +34,7 @@ namespace BackEnd
                 string message = GetMessage();
                 Name = message;
 
-                message = $"'{Name}' entered chat";
+                message = $"'{Name}' entered chat ";
 
                 await server.SendHistory(Id);
                 await server.BroadcastMessage(message, Id);
@@ -42,7 +42,7 @@ namespace BackEnd
 
                 while (true)
                 {
-                    try
+                   try
                     {
                         message = GetMessage();
                         message = $"{Name}: {message}";
